@@ -1,0 +1,38 @@
+[
+  {
+    "name"              : "eth",
+    "cwd"               : "/home/ubuntu/bin/www/",
+    "script"            : "bin/eth.sh",
+    "args"              : "ethpassword",
+    "log_date_format"   : "YYYY-MM-DD HH:mm Z",
+    "log_file"          : "/home/ubuntu/logs/eth-log.log",
+    "out_file"          : "/home/ubuntu/logs/eth-out.log",
+    "error_file"        : "/home/ubuntu/logs/eth-err.log",
+    "merge_logs"        : false,
+    "watch"             : false,
+    "max_restarts"      : 10,
+    "exec_interpreter"  : "bash",
+    "exec_mode"         : "fork_mode"
+  },
+  {
+    "name"              : "node-app",
+    "cwd"               : "/home/ubuntu/bin/www/",
+    "script"            : "app.js",
+    "log_date_format"   : "YYYY-MM-DD HH:mm Z",
+    "log_file"          : "/home/ubuntu/logs/node-app-log.log",
+    "out_file"          : "/home/ubuntu/logs/node-app-out.log",
+    "error_file"        : "/home/ubuntu/logs/node-app-err.log",
+    "merge_logs"        : false,
+    "watch"             : false,
+    "max_restarts"      : 10,
+    "exec_interpreter"  : "node",
+    "exec_mode"         : "fork_mode",
+    "env":
+    {
+      "NODE_ENV"        : "production",
+      "RPC_PORT"        : "8546",
+      "LISTENING_PORT"  : "30303",
+      "VERBOSITY"       : 2
+    }
+  }
+]

@@ -119,10 +119,16 @@ services:
       - --gcmode=${GETH_GCMODE:-full}
       - --port=${P2P_PORT:-30303}
       - --bootnodes=${GETH_BOOTNODES}
+      - --ws
+      - --ws.addr=0.0.0.0
+      - --ws.port=8546
+      - --ws.api=eth,net,web3
+      - --ws.origins=*
     ports:
       - "${AUTHRPC_PORT:-8551}:${AUTHRPC_PORT:-8551}"
       - "${HTTP_PORT:-8545}:${HTTP_PORT:-8545}"
       - "${P2P_PORT:-30303}:${P2P_PORT:-30303}"
+      - "8546:8546"
     volumes:
       - ./data/execution:/root/.ethereum  # Use the default so that the default ipc path works, etc.
       - ./data/jwt.hex:/root/.ethereum/jwt.hex:ro
@@ -194,6 +200,21 @@ services:
       - ./networks/${NETWORK}/genesis.ssz:/vana/consensus/genesis.ssz:ro
       - ./networks/${NETWORK}/config.yml:/vana/consensus/config.yml:ro
     profiles: ["node", "validator"]
+  
+  ethstats-client:
+    container_name: ethstats-client
+    image: ethstats-client:latest
+    restart: unless-stopped
+    environment:
+      - RPC_URL=geth  # URL to your Geth node
+      - WS_SERVER=  # Address of your ethstats server
+      - INSTANCE_NAME=  # Name of your node displayed on the ethstats dashboard
+      - CONTACT=  # Contact info (optional)
+      - WS_SECRET=  # Secret defined on the ethstats server
+    depends_on:
+      geth:
+        condition: service_started
+    profiles: ["monitoring"]
 
   validator-keygen:
     container_name: validator-setup
