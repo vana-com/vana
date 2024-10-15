@@ -64,10 +64,7 @@ function Node ()
 		name: INSTANCE_NAME || (process.env.EC2_INSTANCE_ID || os.hostname()),
 		contact: (process.env.CONTACT_DETAILS || ""),
 		coinbase: null,
-		node: null,
-		net: null,
-		protocol: null,
-		api: null,
+		chain: null,
 		port: (process.env.LISTENING_PORT || 30303),
 		os: os.platform(),
 		os_v: os.release(),
@@ -79,21 +76,22 @@ function Node ()
 
 	this.stats = {
 		active: false,
-		mining: false,
-		hashrate: 0,
 		peers: 0,
 		pending: 0,
 		gasPrice: 0,
 		block: {
 			number: 0,
-			hash: '?',
 			difficulty: 0,
+			gasUsed: 0,
+			hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
 			totalDifficulty: 0,
 			transactions: [],
 			uncles: []
 		},
 		syncing: false,
-		uptime: 0
+		uptime: 0,
+		blockTransactionCount: 0,
+		blockUncleCount: 0
 	};
 
 	this._lastBlock = 0;
@@ -286,7 +284,6 @@ Node.prototype.setupSockets = function()
 	.on('history', function (data)
 	{
 		console.stats('his', 'Got history request');
-
 		self.getHistory( data );
 	})
 	.on('node-pong', function(data)
@@ -365,8 +362,8 @@ Node.prototype.emit = function(message, payload)
 	{
 		try {
 			socket.emit(message, payload);
-			console.sstats('wsc', 'Socket emited message:', chalk.reset.cyan(message));
-			// console.success('wsc', payload);
+			console.stats('wsc', 'Socket emited message:', chalk.reset.cyan(message));
+		    console.success('wsc', payload);
 		}
 		catch (err) {
 			console.error('wsc', 'Socket emit error:', err);
@@ -374,23 +371,20 @@ Node.prototype.emit = function(message, payload)
 	}
 }
 
-Node.prototype.getInfo = function() {
+Node.prototype.getInfo = async function() {
     console.info('==>', 'Getting info');
     console.time('Got info');
 
     try {
-        if (this._web3 && this._web3.eth && this._web3.eth.mining) {
-            this.info.coinbase = this._web3.eth.coinbase;
+        if (this._web3 && this._web3.eth) {
+            this.info.coinbase = await this._web3.eth.getCoinbase();
+            this.info.blockNumber = await this._web3.eth.getBlockNumber();
+            this.info.gasPrice = await this._web3.eth.getGasPrice();
+            this.info.networkId = await this._web3.eth.net.getId();
+            // Add any other relevant information
         }
-        this.info.node = this._web3.version.node;
-        this.info.net = this._web3.version.network;
-        this.info.protocol = this._web3.toDecimal(this._web3.version.ethereum);
-        this.info.api = this._web3.version.api;
-
         console.timeEnd('Got info');
-        console.info(this.info);
-
-        return true;
+        return this.info;  // Return populated info object
     } catch (err) {
         console.error("Couldn't get version", err);
     }
@@ -398,12 +392,11 @@ Node.prototype.getInfo = function() {
     return false;
 }
 
+
 Node.prototype.setInactive = function()
 {
 	this.stats.active = false;
 	this.stats.peers = 0;
-	this.stats.mining = false;
-	this.stats.hashrate = 0;
 	this._down++;
 
 	this.setUptime();
@@ -441,7 +434,6 @@ Node.prototype.formatBlock = function (block)
 
 Node.prototype.getLatestBlock = function () {
     var self = this;
-
     if (this._web3) {
         var timeString = 'Got block in' + chalk.reset.red('');
         console.time('==>', timeString);
@@ -495,7 +487,6 @@ Node.prototype.validateLatestBlock = function (error, result, timeString)
 	if(this.stats.block.number - this._lastBlock > 1)
 	{
 		var range = _.range( Math.max(this.stats.block.number - MAX_BLOCKS_HISTORY, this._lastBlock + 1), Math.max(this.stats.block.number, 0), 1 );
-
 		if( this._latestQueue.idle() )
 			this.getHistory({ list: range });
 	}
@@ -506,33 +497,73 @@ Node.prototype.validateLatestBlock = function (error, result, timeString)
 	}
 }
 
-Node.prototype.getStats = function(forced) {
+function convertBigIntToString(obj) {
+    return Object.entries(obj).reduce((acc, [key, value]) => {
+        if (typeof value === 'bigint') {
+            acc[key] = value.toString(); // Convert BigInt to String
+        } else if (typeof value === 'object' && value !== null) {
+            acc[key] = convertBigIntToString(value); // Recursively handle nested objects
+        } else {
+            acc[key] = value; // Keep other values unchanged
+        }
+        return acc;
+    }, {});
+}
+
+Node.prototype.getStats = async function(forced) {
     var self = this;
     var now = _.now();
-    var lastFetchAgo = now - this._lastFetch;
-    this._lastFetch = now;
 
-    if (this._socket) {
-        this._lastStats = JSON.stringify(this.stats);
-    }
+	console.log("Fetching stats..."); // Log that we're fetching stats
+    try {
+		var lastFetchAgo = now - this._lastFetch;
+		this._lastFetch = now;
 
-    if (this._web3 && (lastFetchAgo >= UPDATE_INTERVAL || forced === true)) {
-        console.stats('==>', 'Getting stats');
-        console.stats('   ', 'last update:', chalk.reset.cyan(lastFetchAgo));
-        console.stats('   ', 'forced:', chalk.reset.cyan(forced === true));
+		if (this._socket) {
+			// Convert stats to string-compatible format
+			this._lastStats = JSON.stringify(convertBigIntToString(this.stats));
+		}
 
-        async.parallel({
-            peers: function (callback) {
-                self._web3.eth.net.getPeerCount(callback); // Use self._web3
-            },
-            mining: function (callback) {
-                self._web3.eth.getMining(callback); // Use self._web3
-            },
-            // ... rest of the code ...
-        }, function (err, results) {
-            // Handle results here
-        });
-    }
+		if (this._web3 && (lastFetchAgo >= UPDATE_INTERVAL || forced === true)) {
+			console.stats('==>', 'Getting stats');
+			console.stats('   ', 'last update:', chalk.reset.cyan(lastFetchAgo));
+			console.stats('   ', 'forced:', chalk.reset.cyan(forced === true));
+
+				const peers = await this._web3.eth.net.getPeerCount();
+				const gasPrice = await this._web3.eth.getGasPrice();
+				const blockNumber = await this._web3.eth.getBlockNumber();
+				const blockTransactionCount = await this._web3.eth.getBlockTransactionCount(blockNumber);
+				const blockUncleCount = await this._web3.eth.getBlockUncleCount(blockNumber);
+				const pendingTransactions = await this._web3.eth.getPendingTransactions();
+				const isSyncing = await this._web3.eth.isSyncing();
+				const block = await this._web3.eth.getBlock();
+
+				// Update the stats
+				// self.stats.block = block;
+				self.stats.active = true;
+				self.stats.peers = peers.toString();
+				self.stats.pendingTransactions = pendingTransactions;
+				self.stats.gasPrice = gasPrice.toString();
+				self.stats.syncing = isSyncing;
+				self.stats.blockTransactionCount = blockTransactionCount;
+				self.stats.blockUncleCount = blockUncleCount;
+
+				self.stats.block.number = block.number.toString();
+				self.stats.block.difficulty = block.difficulty.toString();
+				self.stats.block.gasUsed = block.gasUsed.toString();
+				self.stats.block.hash = block.hash;
+				self.stats.block.totalDifficulty = block.totalDifficulty.toString();
+				self.stats.block.transactions = block.transactions;
+				self.stats.block.uncles = block.uncles;
+				// Convert updated stats to string-compatible format
+				this._lastStats = JSON.stringify(convertBigIntToString(self.stats));
+				// Send updated stats
+				self.sendStatsUpdate();
+		}
+	}
+	catch (error) {
+		console.error('Error fetching stats:', error);
+	}
 };
 
 Node.prototype.getPending = function()
@@ -544,7 +575,7 @@ Node.prototype.getPending = function()
 	{
 		console.stats('==>', 'Getting Pending')
 
-		web3.eth.getBlockTransactionCount('pending', function (err, pending)
+		this._web3.eth.getBlockTransactionCount('pending', function (err, pending)
 		{
 			if (err) {
 				console.error('xx>', 'getPending error: ', err);
@@ -567,56 +598,57 @@ Node.prototype.getPending = function()
 	}
 }
 
-Node.prototype.getHistory = function (range)
-{
-	var self = this;
+Node.prototype.getHistory = function (range) {
+	console.log('Requesting history for blocks:', interv);
+    var self = this;
 
-	var history = [];
-	var interv = {};
+    var history = [];
+    var interv = {};
 
-	console.time('=H=', 'his', 'Got history in');
+    console.time('=H=', 'his', 'Got history in');
 
-	if ( _.isUndefined(range) || range === null)
-		interv = _.range(this.stats.block.number - 1, this.stats.block.number - MAX_HISTORY_UPDATE);
+    // Determine the range of block numbers to fetch
+    if (_.isUndefined(range) || range === null) {
+        interv = _.range(this.stats.block.number - 1, this.stats.block.number - MAX_HISTORY_UPDATE);
+    } else if (!_.isUndefined(range.list)) {
+        interv = range.list;
+    }
 
-	if (!_.isUndefined(range.list))
-		interv = range.list;
+    console.stats('his', 'Getting history from', chalk.reset.cyan(interv[0]), 'to', chalk.reset.cyan(interv[interv.length - 1]));
 
-	console.stats('his', 'Getting history from', chalk.reset.cyan(interv[0]), 'to', chalk.reset.cyan(interv[interv.length - 1]));
+    async.mapSeries(interv, function (number, callback) {
+        this._web3.eth.getBlock(number, false, callback);
+    }, function (err, results) {
+        if (err) {
+            console.error('his', 'history fetch failed:', err);
+            results = []; // Set results to an empty array on error
+        } else {
+            // Check if results is an array
+            if (Array.isArray(results)) {
+                for (var i = 0; i < results.length; i++) {
+                    results[i] = self.formatBlock(results[i]);
+                }
+            } else {
+                console.warn('his', 'Expected results to be an array but got:', results);
+                results = []; // Default to an empty array if not an array
+            }
+        }
 
-	async.mapSeries(interv, function (number, callback)
-	{
-		web3.eth.getBlock(number, false, callback);
-	},
-	function (err, results)
-	{
-		if (err) {
-			console.error('his', 'history fetch failed:', err);
+        // Emit the history, ensuring that results is an array
+        self.emit('history', {
+            id: self.id,
+            history: results.reverse() // Safe to reverse now
+        });
 
-			results = false;
-		}
-		else
-		{
-			for(var i=0; i < results.length; i++)
-			{
-				results[i] = self.formatBlock(results[i]);
-			}
-		}
-
-		self.emit('history', {
-			id: self.id,
-			history: results.reverse()
-		});
-
-		console.timeEnd('=H=', 'his', 'Got history in');
-	});
+        console.timeEnd('=H=', 'his', 'Got history in');
+    });
 }
 
-Node.prototype.changed = function ()
-{
-	var changed = ! _.isEqual( this._lastStats, JSON.stringify(this.stats) );
 
-	return changed;
+Node.prototype.changedCheck = function () {
+    var changed = !_.isEqual(this._lastStats, this.stats);
+    console.log("Stats changed:", changed);
+    return changed;
 }
 
 Node.prototype.prepareBlock = function ()
@@ -644,11 +676,13 @@ Node.prototype.prepareStats = function ()
 		stats: {
 			active: this.stats.active,
 			syncing: this.stats.syncing,
-			mining: this.stats.mining,
-			hashrate: this.stats.hashrate,
 			peers: this.stats.peers,
 			gasPrice: this.stats.gasPrice,
-			uptime: this.stats.uptime
+			uptime: this.stats.uptime,
+			pending: this.stats.pending,
+			blockTransactionCount: this.stats.blockTransactionCount,
+			blockUncleCount: this.stats.blockUncleCount,
+			block: this.stats.block
 		}
 	};
 }
@@ -668,13 +702,14 @@ Node.prototype.sendPendingUpdate = function()
 
 Node.prototype.sendStatsUpdate = function (force)
 {
-	if( this.changed() || force ) {
+	if( this.changedCheck() || force ) {
 		console.stats("wsc", "Sending", chalk.reset.blue((force ? "forced" : "changed")), chalk.bold.white("update"));
 		var stats = this.prepareStats();
 		console.info(stats);
 		this.emit('stats', stats);
-		// this.emit('stats', this.prepareStats());
-	}
+	} else {
+        console.log("Stats unchanged, not sending.");
+    }
 }
 
 Node.prototype.ping = function()
@@ -688,25 +723,24 @@ Node.prototype.ping = function()
 
 Node.prototype.setWatches = function() {
     var self = this;
-
     this.setFilters();
-
     this.updateInterval = setInterval(function() {
         self.getStats();
+		self.sendStatsUpdate(true);  // Force sending stats for debugging
     }, UPDATE_INTERVAL);
-
     if (!this.pingInterval) {
         this.pingInterval = setInterval(function() {
             self.ping();
         }, PING_INTERVAL);
     }
-
-    web3.eth.isSyncing()
+    !this._web3.eth.isSyncing()
         .then(sync => {
             if (sync === true) {
                 web3.reset(true);
                 console.info("SYNC STARTED:", sync);
             } else if (sync) {
+				console.log('SYNC: ');
+				console.log(sync);
                 var synced = sync.currentBlock - sync.startingBlock;
                 var total = sync.highestBlock - sync.startingBlock;
                 sync.progress = synced / total;
@@ -734,7 +768,7 @@ Node.prototype.setFilters = function() {
 
     // Subscribe to new block headers
     try {
-        this.chainFilter = web3.eth.subscribe('newBlockHeaders', function(error, blockHeader) {
+        this.chainFilter = this._web3.eth.subscribe('newBlockHeaders', function(error, blockHeader) {
             if (error) {
                 console.error('Subscription error:', error);
             } else {
@@ -753,7 +787,7 @@ Node.prototype.setFilters = function() {
 
     // Subscribe to pending transactions
     try {
-        this.pendingFilter = web3.eth.subscribe('pendingTransactions', function(error, txHash) {
+        this.pendingFilter = this._web3.eth.subscribe('pendingTransactions', function(error, txHash) {
             if (error) {
                 console.error('Subscription error:', error);
             } else {
