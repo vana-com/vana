@@ -1,0 +1,34 @@
+{
+  "name": "primus-client",
+  "version": "7.3.4",
+  "description": "Prebuilt client library for Primus - a simple abstraction around real-time frameworks",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HydraOrc/primus-client.git"
+  },
+  "keywords": [
+    "client",
+    "framework",
+    "pubsub",
+    "pub",
+    "sub",
+    "primus",
+    "prumus",
+    "real-time",
+    "realtime",
+    "socket",
+    "sockets",
+    "sockjs",
+    "spark",
+    "websocket",
+    "websockets",
+    "ws"
+  ],
+  "author": "HydraOrc",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/HydraOrc/primus-client/issues"
+  },
+  "homepage": "https://github.com/HydraOrc/primus-client#readme"
+}

@@ -1,0 +1,35 @@
+{
+  "name": "vana-stats-client",
+  "description": "Vana Network statistics relay client",
+  "version": "0.1.1",
+  "private": true,
+  "main": "./node.js",
+  "dependencies": {
+    "ws": "^8.18.0",
+    "primus": "^7.3.1",
+    "primus-client": "^7.3.1",
+    "primus-emit": "^1.0.0",
+    "primus-spark-latency": "^0.1.1",
+    "axios": "1.7.7",
+    "lodash": "4.17.21",
+    "web3": "4.13.0",
+    "web3-providers-ws": "4.0.8"
+  },
+  "scripts": {
+    "start": "node ./node.js"
+  },
+  "keywords": [
+    "vana",
+    "stats",
+    "intelligence"
+  ],
+  "author": "vana.org",
+  "authors": [
+    {
+      "name": "Vana",
+      "email": "service@opendatalabs.xyz",
+      "url": "https://github.com/vana-com"
+    }
+  ],
+  "license": "ISC"
+}
