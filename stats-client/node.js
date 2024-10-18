@@ -18,6 +18,7 @@ const STATS_SERVER_URL = process.env.STATS_SERVER_URL;
 const GETH_URL = process.env.GETH_URL;
 const INSTANCE_NAME = process.env.INSTANCE_NAME;
 const WS_SECRET = process.env.WS_SECRET;
+const BEACON_NODE_API = process.env.BEACON_NODE_API;
 
 // Define stats object
 const stats = {
@@ -37,7 +38,15 @@ const stats = {
   syncing: false,
   uptime: 0,
   blockTransactionCount: 0,
-  blockUncleCount: 0
+  blockUncleCount: 0,
+  validator: {
+    stakedAmount: 0,
+    inactivityScore: 0,
+    status: 'unknown',
+    effectiveBalance: 0,
+    slashed: false,
+    finalizing: false
+  }
 };
 
 // Utility function to convert BigInt to string
@@ -72,7 +81,6 @@ function initializePrimus() {
   function initializeWeb3() {
     console.log('Attempting to connect to WebSocket provider...');
     wsProvider = new WebsocketProvider(GETH_URL);
-    console.info("GETH_URL: " + GETH_URL);
 
     wsProvider.on('connect', async () => {
       console.log('WebSocket provider connected');
@@ -107,7 +115,7 @@ function initializePrimus() {
 
   initializeWeb3();
 
-  // Function to update stats from Geth
+  // Function to update stats from Geth and Beacon Node
   async function updateStats() {
     try {
       if (!web3) {
@@ -145,6 +153,20 @@ function initializePrimus() {
       // Update uptime
       stats.uptime = process.uptime();
 
+      const validatorData = await fetch(`${BEACON_NODE_API}/validators`);
+    if (!validatorData.ok) {
+      throw new Error(`Beacon node API request failed with status ${validatorData.status}`);
+    }
+    const validatorJson = await validatorData.json();
+    if (validatorJson.data && validatorJson.data.length > 0) {
+      const validator = validatorJson.data[0]; // Assuming single validator monitoring
+      stats.validator.stakedAmount = validator.balance;
+      stats.validator.effectiveBalance = validator.effective_balance;
+      stats.validator.status = validator.status;
+      stats.validator.slashed = validator.slashed;
+      // Additional fields such as inactivity score can be added if available in API
+    }
+
       console.log('Updated stats:', stats);
     } catch (error) {
       console.error('Error updating stats:', error);
@@ -163,7 +185,7 @@ function initializePrimus() {
       }
     };
     console.log('Sent stats message:', statsMessage);
-    primus.write(statsMessage);
+    primus.write(statsMessage); // Use write to send the message
   }
 
   // When the connection opens, send a hello message
@@ -172,16 +194,16 @@ function initializePrimus() {
 
     // Construct and emit the hello message
     const helloMessage = {
-      id: _.camelCase(os.hostname()),
+      id: INSTANCE_NAME, // Unique client identifier
+      name: INSTANCE_NAME, // Add a name for identification
       info: {
-        name: INSTANCE_NAME,
-        os: os.platform(),
-        os_v: os.release(),
+          os: os.platform(),
+          os_v: os.release(),
       },
-      secret: WS_SECRET,
-      spark: primus.id, // Add spark ID if available
-      latency: primus.latency || 0 // Add latency if available
-    };
+      secret: 'oJ9izPfXCeUEsAZhHU1wYs6qoX5LZFCpBuDZrT0uOM',
+      spark: primus.id,
+      latency: primus.latency || 0
+  };
     primus.emit('hello', helloMessage);
 
     // Emit a ready event after hello

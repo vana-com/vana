@@ -19,7 +19,7 @@ services:
         condition: service_completed_successfully
       prysm-keygen:
         condition: service_completed_successfully
-    profiles: ["init", "node", "validator", "manual"]
+    profiles: ["init", "node", "validator", "manual", "monitoring"]
 
   delete-all:
     container_name: delete-all
@@ -187,6 +187,7 @@ services:
       - "${GRPC_GATEWAY_PORT:-3500}:${GRPC_GATEWAY_PORT:-3500}"
       - "${P2P_TCP_PORT:-13000}:${P2P_TCP_PORT:-13000}"
       - "${P2P_UDP_PORT:-12000}:${P2P_UDP_PORT:-12000}/udp"
+      - "5052:5052"
     environment:
       - WITHDRAWAL_ADDRESS
       - PRYSM_SLOTS_PER_ARCHIVE_POINT
@@ -206,10 +207,11 @@ services:
     image: stats-client:latest
     restart: unless-stopped
     environment:
-      - STATS_SERVER_URL=ws://34.136.180.173:3000 # Address of the stats server
+      - STATS_SERVER_URL=ws://localhost:3000 # Address of the stats server
       - GETH_URL=ws://geth:8546 # URL of Geth node
       - INSTANCE_NAME= # Name of your node displayed on the stats dashboard
       - WS_SECRET= # Secret defined on the stats server
+      - BEACON_NODE_API=http://beacon:3500/eth/v1/beacon/states/head
     depends_on:
       geth:
         condition: service_started
