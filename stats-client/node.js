@@ -33,19 +33,21 @@ const stats = {
     hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
     totalDifficulty: 0,
     transactions: [],
-    uncles: []
+    uncles: [],
+    blockTransactionCount: 0
   },
   syncing: false,
   uptime: 0,
-  blockTransactionCount: 0,
   blockUncleCount: 0,
   validator: {
-    stakedAmount: 0,
-    inactivityScore: 0,
+    balance: 0,
     status: 'unknown',
     effectiveBalance: 0,
     slashed: false,
-    finalizing: false
+    activation_eligibility_epoch: 0,
+    activation_epoch: 0,
+    exit_epoch: 0,
+    withdrawable_epoch: 0
   }
 };
 
@@ -142,6 +144,7 @@ function initializePrimus() {
 
       // Fetch latest block
       const latestBlock = await web3.eth.getBlock('latest');
+
       stats.block.number = latestBlock.number;
       stats.block.difficulty = latestBlock.difficulty;
       stats.block.gasUsed = latestBlock.gasUsed;
@@ -149,25 +152,31 @@ function initializePrimus() {
       stats.block.totalDifficulty = latestBlock.totalDifficulty;
       stats.block.transactions = latestBlock.transactions;
       stats.block.uncles = latestBlock.uncles;
+      stats.block.blockTransactionCount = latestBlock.transactions.length;
 
       // Update uptime
       stats.uptime = process.uptime();
 
       const validatorData = await fetch(`${BEACON_NODE_API}/validators`);
-    if (!validatorData.ok) {
-      throw new Error(`Beacon node API request failed with status ${validatorData.status}`);
-    }
-    const validatorJson = await validatorData.json();
-    if (validatorJson.data && validatorJson.data.length > 0) {
-      const validator = validatorJson.data[0]; // Assuming single validator monitoring
-      stats.validator.stakedAmount = validator.balance;
-      stats.validator.effectiveBalance = validator.effective_balance;
-      stats.validator.status = validator.status;
-      stats.validator.slashed = validator.slashed;
-      // Additional fields such as inactivity score can be added if available in API
-    }
+      if (!validatorData.ok) {
+        throw new Error(`Beacon node API request failed with status ${validatorData.status}`);
+      }
 
-      console.log('Updated stats:', stats);
+      const validatorJson = await validatorData.json();
+      if (validatorJson.data && validatorJson.data.length > 0) {
+        const validatorData = validatorJson.data[0]; // Assuming single validator monitoring
+        const { validator } = validatorData; // Extract the nested validator object
+
+        // Assign the correct properties from the nested validator object
+        stats.validator.balance = validatorData.balance;
+        stats.validator.status = validatorData.status;
+        stats.validator.effectiveBalance = validator.effective_balance;
+        stats.validator.slashed = validator.slashed;
+        stats.validator.activation_eligibility_epoch = validator.activation_eligibility_epoch;
+        stats.validator.activation_epoch = validator.activation_epoch;
+        stats.validator.exit_epoch = validator.exit_epoch;
+        stats.validator.withdrawable_epoch = validator.withdrawable_epoch;
+      }
     } catch (error) {
       console.error('Error updating stats:', error);
     }
@@ -184,7 +193,7 @@ function initializePrimus() {
         stats: sanitizedStats
       }
     };
-    console.log('Sent stats message:', statsMessage);
+
     primus.write(statsMessage); // Use write to send the message
   }
 
@@ -200,7 +209,7 @@ function initializePrimus() {
           os: os.platform(),
           os_v: os.release(),
       },
-      secret: 'oJ9izPfXCeUEsAZhHU1wYs6qoX5LZFCpBuDZrT0uOM',
+      secret: WS_SECRET,
       spark: primus.id,
       latency: primus.latency || 0
   };
