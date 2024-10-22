@@ -15,7 +15,16 @@ jobs:
     steps:
       # Step 1: Check out the repository
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Get current commit SHA
+        id: current_sha
+        run: echo "::set-output name=sha::$(git rev-parse HEAD)"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       # Step 2: Log in to DockerHub using the secrets
       - name: Log in to DockerHub
