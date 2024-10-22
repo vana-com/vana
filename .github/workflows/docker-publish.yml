@@ -31,7 +31,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          password: ${{ secrets.DOCKERHUB_SERVICE_ACCOUNT_PAT }}
 
       # Step 3: Build the Docker image
       - name: Build Docker image
