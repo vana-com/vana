@@ -164,15 +164,15 @@ services:
       - --grpc-gateway-port=${GRPC_GATEWAY_PORT:-3500}
       - --p2p-host-ip=${EXTERNAL_IP}
       - --bootstrap-node=${PRYSM_PEER_1}
-      - --peer=${PRYSM_PEER_1}
-      - --peer=${PRYSM_PEER_2}
-      - --peer=${PRYSM_PEER_3}
-      - --peer=${PRYSM_PEER_4}
-      - --peer=${PRYSM_PEER_5}
       # Add more peers as needed, make sure to add them to .env
       - --p2p-priv-key=/vana/consensus/prysm-key.hex
       - --suggested-fee-recipient=${WITHDRAWAL_ADDRESS}
       - --slots-per-archive-point=${PRYSM_SLOTS_PER_ARCHIVE_POINT:-512}
+      - --bootstrap-node=enr:-MK4QG80VKEEf1Yc4cWVE3tdg7VJaJaIP-edEi3Cpy8VEjKKIqxI4-VSsyZFtK-n5hk6-9witzu2Aw_DRDvouEcB9MqGAZK1Qremh2F0dG5ldHOIAAAAAAAGAACEZXRoMpD-E50zYAAAOP__________gmlkgnY0gmlwhCKGHOuJc2VjcDI1NmsxoQKns0GbE9NCv0ojTaVOhlzXzGw-Qmf9rgt62EiOcatMyIhzeW5jbmV0cw-DdGNwgjLIg3VkcIIu4A
+      - --bootstrap-node=enr:-MK4QPyiFcuawj46kKCEUNlhA7WjsNYX_JCzDBv3LqloRMFkTD-EpmrgsVMxCFPbEraAUhnAqL2mIJDGb_8kYp2lsrOGAZK1RiQNh2F0dG5ldHOIAAMAAAAAAACEZXRoMpD-E50zYAAAOP__________gmlkgnY0gmlwhCKrCn6Jc2VjcDI1NmsxoQN4-d9n3O_Pc3K4CYeEC956sEUyDYpmCNcfsH9O8EaP4ohzeW5jbmV0cw-DdGNwgjLIg3VkcIIu4A
+      - --bootstrap-node=enr:-MK4QGMzcgqq81rNkSSMnaxWCYW1xvvW85_FNFcjzoEoz3dYZF3LU2dpSang-K5737vK5yTynVeBM8uRHUvdA-oSUaOGAZK1R47Kh2F0dG5ldHOIAAAAAAAGAACEZXRoMpD-E50zYAAAOP__________gmlkgnY0gmlwhCIuMFOJc2VjcDI1NmsxoQOs_-KAZ_jBRbewseZ4YsijjIjm9qn_tr1M_aho_ptvC4hzeW5jbmV0cw-DdGNwgjLIg3VkcIIu4A
+      - --bootstrap-node=enr:-MK4QHNKXQfmiB6HlEufNzqwRAn-0s4Z66hMR6EGeGBexF_6ZhfT9Bi0gHTKoGMx-45YAEJLXsMVFK3_3cKLfY4X5z2GAZK1SxgKh2F0dG5ldHOIMAAAAAAAAACEZXRoMpD-E50zYAAAOP__________gmlkgnY0gmlwhCJCGMmJc2VjcDI1NmsxoQK8hVxvd4ixf6fDf3pVE1wCIskubGO54H4zxducIWKj-ohzeW5jbmV0cw-DdGNwgjLIg3VkcIIu4A
+      - --bootstrap-node=enr:-MK4QCbmLKmhigyGf2prixu-2pWe7mt1oxG4b25V2XANlL1IM8P-IuUqcbBovKXLBJaI9QSu-o5LUNXqv4OeQWU-NiyGAZK1TEiKh2F0dG5ldHOIMAAAAAAAAACEZXRoMpD-E50zYAAAOP__________gmlkgnY0gmlwhCKq_B6Jc2VjcDI1NmsxoQLoC02Fd9_xItr6lY6ftSU9fj5YXg0o_OweGjDRjuDdG4hzeW5jbmV0cw-DdGNwgjLIg3VkcIIu4A
     depends_on:
       geth:
         condition: service_started
@@ -322,4 +322,3 @@ services:
       validator-import:
         condition: service_completed_successfully
     profiles: ["manual"]
-
