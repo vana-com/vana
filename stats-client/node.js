@@ -3,6 +3,8 @@ const Primus = require('primus');
 const Emitter = require('primus-emit');
 const Latency = require('primus-spark-latency');
 const WebsocketProvider = require('web3-providers-ws').default || require('web3-providers-ws');
+const fetch = require('node-fetch');
+
 let Web3;
 
 try {
@@ -16,6 +18,7 @@ const _ = require('lodash');
 
 const STATS_SERVER_URL = process.env.STATS_SERVER_URL;
 const GETH_URL = process.env.GETH_URL;
+const HTTP_GETH_URL = process.env.HTTP_GETH_URL;
 const INSTANCE_NAME = process.env.INSTANCE_NAME;
 const WS_SECRET = process.env.WS_SECRET;
 const BEACON_NODE_API = process.env.BEACON_NODE_API;
@@ -48,8 +51,20 @@ const stats = {
     activation_epoch: 0,
     exit_epoch: 0,
     withdrawable_epoch: 0
+  },
+  beacon: {
+    headSlot: 0,
+    finalizedEpoch: 0,
+    currentEpoch: 0
+  },
+  containers: {
+    geth: { cpuPercentage: 0, memoryUsage: '0MB', memoryLimit: '0MB', osPlatform: '', osVersion: '' },
+    validator: { cpuPercentage: 0, memoryUsage: '0MB', memoryLimit: '0MB', osPlatform: '', osVersion: '' },
+    beacon: { cpuPercentage: 0, memoryUsage: '0MB', memoryLimit: '0MB', osPlatform: '', osVersion: '' }
   }
 };
+
+let lastPingTimestamp = 0; // For latency calculation
 
 // Utility function to convert BigInt to string
 function convertBigIntToString(obj) {
@@ -58,40 +73,201 @@ function convertBigIntToString(obj) {
   );
 }
 
+const Docker = require('dockerode');
+const docker = new Docker();
+
+// Function to fetch container stats
+async function getContainerStats(containerName) {
+  try {
+    const container = docker.getContainer(containerName);
+    const stats = await container.stats({ stream: false });
+
+    const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
+    const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
+    const cpuPercentage = (cpuDelta / systemDelta) * stats.cpu_stats.online_cpus * 100;
+
+    const memoryUsage = stats.memory_stats.usage / (1024 * 1024); // Convert to MB
+    const memoryLimit = stats.memory_stats.limit / (1024 * 1024); // Convert to MB
+
+    const osInfo = await getContainerOsInfo(containerName); // Fetch OS info
+
+    return {
+      cpuPercentage: cpuPercentage.toFixed(2),
+      memoryUsage: `${memoryUsage.toFixed(2)}MB`,
+      memoryLimit: `${memoryLimit.toFixed(2)}MB`,
+      osPlatform: osInfo.platform,
+      osVersion: osInfo.version
+    };
+  } catch (err) {
+    console.error(`Error fetching stats for container ${containerName}:`, err);
+    return null;
+  }
+}
+
+// Function to fetch OS info from the container
+async function getContainerOsInfo(containerName) {
+  try {
+    const container = docker.getContainer(containerName);
+    const exec = await container.exec({
+      Cmd: ['cat', '/etc/os-release'],
+      AttachStdout: true,
+      AttachStderr: true
+    });
+
+    const stream = await exec.start();
+    let output = '';
+
+    // Collect output from the command
+    stream.on('data', (data) => {
+      output += data.toString();
+    });
+
+    // Return OS platform and version after the stream finishes
+    return new Promise((resolve, reject) => {
+      stream.on('end', () => {
+        const platform = output.match(/NAME="(.+)"/)?.[1] || 'Unknown';
+        const version = output.match(/VERSION="(.+)"/)?.[1] || 'Unknown';
+        resolve({ platform, version });
+      });
+
+      stream.on('error', (err) => {
+        console.error(`Error fetching OS info for container ${containerName}:`, err);
+        reject(err);
+      });
+    });
+  } catch (err) {
+    console.error(`Error executing command in container ${containerName}:`, err);
+    return { platform: 'Unknown', version: 'Unknown' };
+  }
+}
+
+// Function to fetch beacon node stats
+async function getBeaconNodeStats() {
+  try {
+    const response = await fetch(`${BEACON_NODE_API}`);
+    if (!response.ok) {
+      throw new Error(`Beacon node API request failed with status ${response.status}`);
+    }
+    const data = await response.json();
+
+    return {
+      headSlot: data.head_slot,
+      finalizedEpoch: data.finalized_epoch,
+      currentEpoch: data.current_epoch,
+    };
+  } catch (err) {
+    console.error('Error fetching beacon node stats:', err);
+    return null;
+  }
+}
+
+// Function to fetch validator data
+async function getValidatorData() {
+  try {
+    const validatorResponse = await fetch(`${BEACON_NODE_API}/validators`);
+    if (!validatorResponse.ok) {
+      throw new Error(`Beacon node API request failed with status ${validatorResponse.status}`);
+    }
+    const validatorJson = await validatorResponse.json();
+    if (validatorJson.data && validatorJson.data.length > 0) {
+      const validatorData = validatorJson.data[0]; // Assuming single validator monitoring
+      const { validator } = validatorData;
+
+      return {
+        balance: validatorData.balance,
+        status: validatorData.status,
+        effectiveBalance: validator.effective_balance,
+        slashed: validator.slashed,
+        activation_eligibility_epoch: validator.activation_eligibility_epoch,
+        activation_epoch: validator.activation_epoch,
+        exit_epoch: validator.exit_epoch,
+        withdrawable_epoch: validator.withdrawable_epoch,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching validator data:', error);
+    return null;
+  }
+}
+
+// Function to update all stats (Geth, Beacon Node, Validator, and containers)
+async function updateStats() {
+  try {
+    if (!web3) {
+      console.error('Web3 instance is not available yet. Skipping stats update.');
+      return;
+    }
+
+    // Check if the Web3 provider is ready
+    const isListening = await web3.eth.net.isListening();
+    if (!isListening) {
+      console.error('Web3 provider is not connected. Skipping stats update.');
+      return;
+    }
+
+    // Fetch peer count, gas price, block data
+    stats.peers = await web3.eth.net.getPeerCount();
+    stats.gasPrice = await web3.eth.getGasPrice();
+    const latestBlock = await web3.eth.getBlock('latest');
+    stats.block = {
+      number: latestBlock.number,
+      difficulty: latestBlock.difficulty,
+      gasUsed: latestBlock.gasUsed,
+      hash: latestBlock.hash,
+      totalDifficulty: latestBlock.totalDifficulty,
+      transactions: latestBlock.transactions,
+      uncles: latestBlock.uncles,
+      blockTransactionCount: latestBlock.transactions.length,
+    };
+
+    // Update uptime
+    stats.uptime = process.uptime();
+
+    // Fetch container stats for Geth, Beacon, and Validator containers
+    const gethStats = await getContainerStats('geth');
+    const beaconStats = await getContainerStats('beacon');
+    const validatorStats = await getContainerStats('validator');
+
+    if (gethStats) stats.containers.geth = gethStats;
+    if (beaconStats) stats.containers.beacon = beaconStats;
+    if (validatorStats) stats.containers.validator = validatorStats;
+
+    // Fetch beacon node stats
+    const beaconNodeStats = await getBeaconNodeStats();
+    if (beaconNodeStats) stats.beacon = beaconNodeStats;
+
+    // Fetch validator data
+    const validatorData = await getValidatorData();
+    if (validatorData) stats.validator = validatorData;
+
+  } catch (error) {
+    console.error('Error updating stats:', error);
+  }
+}
+
 // Create a function to initialize Primus connection
 function initializePrimus() {
-  // Create a Primus socket connection using createSocket
   const Socket = Primus.createSocket({
     transformer: 'websockets',
     pathname: '/api',
     strategy: 'disconnect,online,timeout',
     reconnect: {
-      retries: 30
+      retries: 30,
     },
     plugin: {
       emitter: Emitter,
-      sparkLatency: Latency
-    }
+      sparkLatency: Latency,
+    },
   });
 
   const primus = new Socket(STATS_SERVER_URL);
 
-  // Function to initialize Web3 connection
-  let web3;
-  let wsProvider;
-
   function initializeWeb3() {
-    console.log('Attempting to connect to WebSocket provider...');
     wsProvider = new WebsocketProvider(GETH_URL);
-
     wsProvider.on('connect', async () => {
-      console.log('WebSocket provider connected');
-
       try {
-        // Create Web3 instance with the WebSocket provider
         web3 = new Web3(wsProvider);
-
-        // Validate readiness by trying a simple method
         const isListening = await web3.eth.net.isListening();
         if (isListening) {
           console.log('Web3 provider connected successfully');
@@ -106,10 +282,7 @@ function initializePrimus() {
     });
 
     wsProvider.on('end', () => {
-      console.error('WebSocket provider disconnected');
-      // Attempt to reconnect after a delay
       setTimeout(() => {
-        console.log('Attempting to reconnect WebSocket provider...');
         initializeWeb3();
       }, 5000);
     });
@@ -117,126 +290,54 @@ function initializePrimus() {
 
   initializeWeb3();
 
-  // Function to update stats from Geth and Beacon Node
-  async function updateStats() {
-    try {
-      if (!web3) {
-        console.error('Web3 instance is not available yet. Skipping stats update.');
-        return;
-      }
-
-      // Check if the Web3 provider is ready by calling a simple method
-      const isListening = await web3.eth.net.isListening();
-      if (!isListening) {
-        console.error('Web3 provider is not connected. Skipping stats update.');
-        return;
-      }
-
-      // Fetch peer count
-      stats.peers = await web3.eth.net.getPeerCount();
-
-      // Fetch gas price
-      stats.gasPrice = await web3.eth.getGasPrice();
-
-      // Fetch syncing status
-      const syncing = await web3.eth.isSyncing();
-      stats.syncing = !!syncing;
-
-      // Fetch latest block
-      const latestBlock = await web3.eth.getBlock('latest');
-
-      stats.block.number = latestBlock.number;
-      stats.block.difficulty = latestBlock.difficulty;
-      stats.block.gasUsed = latestBlock.gasUsed;
-      stats.block.hash = latestBlock.hash;
-      stats.block.totalDifficulty = latestBlock.totalDifficulty;
-      stats.block.transactions = latestBlock.transactions;
-      stats.block.uncles = latestBlock.uncles;
-      stats.block.blockTransactionCount = latestBlock.transactions.length;
-
-      // Update uptime
-      stats.uptime = process.uptime();
-
-      const validatorData = await fetch(`${BEACON_NODE_API}/validators`);
-      if (!validatorData.ok) {
-        throw new Error(`Beacon node API request failed with status ${validatorData.status}`);
-      }
-
-      const validatorJson = await validatorData.json();
-      if (validatorJson.data && validatorJson.data.length > 0) {
-        const validatorData = validatorJson.data[0]; // Assuming single validator monitoring
-        const { validator } = validatorData; // Extract the nested validator object
-
-        // Assign the correct properties from the nested validator object
-        stats.validator.balance = validatorData.balance;
-        stats.validator.status = validatorData.status;
-        stats.validator.effectiveBalance = validator.effective_balance;
-        stats.validator.slashed = validator.slashed;
-        stats.validator.activation_eligibility_epoch = validator.activation_eligibility_epoch;
-        stats.validator.activation_epoch = validator.activation_epoch;
-        stats.validator.exit_epoch = validator.exit_epoch;
-        stats.validator.withdrawable_epoch = validator.withdrawable_epoch;
-      }
-    } catch (error) {
-      console.error('Error updating stats:', error);
-    }
+  // Function to calculate and send latency
+  function pingServer() {
+    lastPingTimestamp = Date.now();
+    primus.emit('ping');
   }
 
+  primus.on('pong', () => {
+    const latency = Date.now() - lastPingTimestamp;
+    stats.latency = latency; // Update the stats object with latency
+    console.log(`Latency: ${latency} ms`);
+  });
+
+  // Function to send stats to monitoring server
   async function sendStats() {
     await updateStats();
-    const sanitizedStats = convertBigIntToString(stats); // Sanitize BigInt values
-
+    const sanitizedStats = convertBigIntToString(stats);
     const statsMessage = {
       method: 'stats',
       params: {
         id: INSTANCE_NAME,
         stats: sanitizedStats
-      }
+      },
     };
-
-    primus.write(statsMessage); // Use write to send the message
+    primus.write(statsMessage);
   }
 
-  // When the connection opens, send a hello message
   primus.on('open', () => {
-    console.log('Connected to the server');
-
-    // Construct and emit the hello message
     const helloMessage = {
-      id: INSTANCE_NAME, // Unique client identifier
-      name: INSTANCE_NAME, // Add a name for identification
+      id: INSTANCE_NAME,
+      name: INSTANCE_NAME,
       info: {
-          os: os.platform(),
-          os_v: os.release(),
+        os: os.platform(),
+        os_v: os.release(),
       },
       secret: WS_SECRET,
       spark: primus.id,
-      latency: primus.latency || 0
-  };
+      latency: primus.latency || 0,
+    };
     primus.emit('hello', helloMessage);
 
-    // Emit a ready event after hello
     primus.emit('ready');
 
-    // Set up latency pings
     setInterval(() => {
-      const now = _.now();
-      primus.emit('node-ping', {
-        id: helloMessage.id,
-        clientTime: now
-      });
-    }, 3000); // Ping every 3 seconds
-
-    // Send stats periodically
-    setTimeout(() => {
+      pingServer();
       sendStats();
-      setInterval(() => {
-        sendStats();
-      }, 10000); // Send stats every 10 seconds
-    }, 5000); // Wait 5 seconds for WebSocket to be ready
+    }, 10000); // Send stats every 10 seconds
   });
 
-  // Listen for incoming messages from the server
   primus.on('data', (data) => {
     try {
       console.log('Received:', data);
@@ -245,24 +346,20 @@ function initializePrimus() {
     }
   });
 
-  // Handle any errors
+  primus.on('ping', () => {
+    primus.emit('pong'); // Respond with 'pong' when receiving 'ping' from server
+  });
+
   primus.on('error', (err) => {
     console.error('Primus error:', err);
   });
 
-  // Handle connection close
   primus.on('end', () => {
     console.log('Connection closed');
   });
 
-  // Handle reconnect events
   primus.on('reconnect', () => {
     console.log('Reconnect attempt started');
-  });
-
-  primus.on('reconnect scheduled', (opts) => {
-    console.warn('Reconnecting in', opts.scheduled, 'ms');
-    console.warn('This is attempt', opts.attempt, 'out of', opts.retries);
   });
 
   primus.on('reconnected', (opts) => {

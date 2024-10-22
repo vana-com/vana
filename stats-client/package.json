@@ -6,6 +6,7 @@
   "main": "./node.js",
   "dependencies": {
     "ws": "^8.18.0",
+    "dockerode": "4.0.2",
     "primus": "^7.3.1",
     "primus-client": "^7.3.1",
     "primus-emit": "^1.0.0",
