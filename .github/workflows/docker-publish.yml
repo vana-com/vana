@@ -1,0 +1,31 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - ethstats-client  # This triggers the workflow on a push to the 'main' branch
+  pull_request:
+    branches:
+      - ethstats-client  # Also triggers on pull requests to the 'main' branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Log in to DockerHub using the secrets
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_SERVICE_ACCOUNT_PAT }}" --password-stdin
+
+      # Step 3: Build the Docker image
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKERHUB_SERVICE_ACCOUNT_PAT }}/moksha-stats-dashboard:latest .
+
+      # Step 4: Push the Docker image to DockerHub
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKERHUB_SERVICE_ACCOUNT_PAT }}/moksha-stats-dashboard:latest
+
