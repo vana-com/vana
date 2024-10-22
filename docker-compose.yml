@@ -19,7 +19,7 @@ services:
         condition: service_completed_successfully
       prysm-keygen:
         condition: service_completed_successfully
-    profiles: ["init", "node", "validator", "manual", "monitoring"]
+    profiles: ["init", "node", "validator", "manual"]
 
   delete-all:
     container_name: delete-all
@@ -211,10 +211,10 @@ services:
     environment:
       - STATS_SERVER_URL=ws://localhost:3000 # Address of the stats server
       - GETH_URL=ws://geth:8546
-      - HTTP_GETH_URL=http://geth:8545
       - INSTANCE_NAME= # Name of your node displayed on the stats dashboard
       - WS_SECRET=  # Secret defined on the stats server
       - BEACON_NODE_API=http://beacon:3500/eth/v1/beacon/states/head
+      - PUBLIC_KEY=
     depends_on:
       geth:
         condition: service_started
@@ -322,3 +322,4 @@ services:
       validator-import:
         condition: service_completed_successfully
     profiles: ["manual"]
+

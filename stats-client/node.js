@@ -18,10 +18,10 @@ const _ = require('lodash');
 
 const STATS_SERVER_URL = process.env.STATS_SERVER_URL;
 const GETH_URL = process.env.GETH_URL;
-const HTTP_GETH_URL = process.env.HTTP_GETH_URL;
 const INSTANCE_NAME = process.env.INSTANCE_NAME;
 const WS_SECRET = process.env.WS_SECRET;
 const BEACON_NODE_API = process.env.BEACON_NODE_API;
+const PUBLIC_KEY = process.env.PUBLIC_KEY;
 
 // Define stats object
 const stats = {
@@ -169,20 +169,25 @@ async function getValidatorData() {
       throw new Error(`Beacon node API request failed with status ${validatorResponse.status}`);
     }
     const validatorJson = await validatorResponse.json();
-    if (validatorJson.data && validatorJson.data.length > 0) {
-      const validatorData = validatorJson.data[0]; // Assuming single validator monitoring
-      const { validator } = validatorData;
 
-      return {
-        balance: validatorData.balance,
-        status: validatorData.status,
-        effectiveBalance: validator.effective_balance,
-        slashed: validator.slashed,
-        activation_eligibility_epoch: validator.activation_eligibility_epoch,
-        activation_epoch: validator.activation_epoch,
-        exit_epoch: validator.exit_epoch,
-        withdrawable_epoch: validator.withdrawable_epoch,
-      };
+    if (validatorJson.data && validatorJson.data.length > 0) {
+      const matchingValidator = validatorJson.data.find(v => v.validator.pubkey === PUBLIC_KEY);
+
+      if (matchingValidator) {
+        const { validator } = matchingValidator;
+        return {
+          balance: matchingValidator.balance,
+          status: matchingValidator.status,
+          effectiveBalance: validator.effective_balance,
+          slashed: validator.slashed,
+          activation_eligibility_epoch: validator.activation_eligibility_epoch,
+          activation_epoch: validator.activation_epoch,
+          exit_epoch: validator.exit_epoch,
+          withdrawable_epoch: validator.withdrawable_epoch,
+        };
+      } else {
+        console.error('Validator with public key not found.');
+      }
     }
     return null;
   } catch (error) {
@@ -210,6 +215,7 @@ async function updateStats() {
     stats.peers = await web3.eth.net.getPeerCount();
     stats.gasPrice = await web3.eth.getGasPrice();
     const latestBlock = await web3.eth.getBlock('latest');
+
     stats.block = {
       number: latestBlock.number,
       difficulty: latestBlock.difficulty,
@@ -246,7 +252,7 @@ async function updateStats() {
   }
 }
 
-// Create a function to initialize Primus connection
+// Function to initialize Primus connection
 function initializePrimus() {
   const Socket = Primus.createSocket({
     transformer: 'websockets',
