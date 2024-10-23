@@ -30,7 +30,7 @@ jobs:
 
       # Step 4: Log in to DockerHub using the secrets
       - name: Log in to DockerHub
-        run: echo "${{ secrets.DOCKERHUB_SERVICE_ACCOUNT_PAT }}" | docker login --username "${{ vars.DOCKERHUB_USERNAME }}" --password ${{ secrets.DOCKERHUB_SERVICE_ACCOUNT_PAT }}
+        run: echo "${{ secrets.DOCKERHUB_SERVICE_ACCOUNT_PAT }}" | docker login --username "${{ vars.DOCKERHUB_USERNAME }}" --password-stdin ${{ secrets.DOCKERHUB_SERVICE_ACCOUNT_PAT }}
 
       # Step 5: Build the Docker image
       - name: Build Docker image
