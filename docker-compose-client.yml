@@ -1,15 +1,15 @@
 services:
   stats-client:
     container_name: stats-client
-    image: stats-client:latest
+    image: thenewautonomy/moksha-stats-dashboard:latest
     volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     environment:
-      - STATS_SERVER_URL=ws://localhost:3000 # Address of the stats server
+      - STATS_SERVER_URL=${STATS_SERVER_URL}
       - GETH_URL=ws://geth:8546
-      - INSTANCE_NAME= # Name of your node displayed on the stats dashboard
-      - WS_SECRET=  # Secret defined on the stats server
+      - INSTANCE_NAME=${INSTANCE_NAME}
+      - WS_SECRET=${WS_SECRET}
       - BEACON_NODE_API=http://beacon:3500/eth/v1/beacon/states/head
-      - PUBLIC_KEY=
+      - PUBLIC_KEY=${PUBLIC_KEY}
     profiles: ["monitoring"]
