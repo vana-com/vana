@@ -31,12 +31,12 @@ jobs:
       # Step 4: Log in to DockerHub using the secrets
       
       - name: Log in to DockerHub
-        run: echo "${{ secrets.DOCKERHUB_SERVICE_ACCOUNT_PAT }}" | docker login --username "${{ vars.DOCKERHUB_USERNAME }}" --password-stdin
+        run: echo "${{ secrets.TEST_DOCKERHUB_PAT }}" | docker login --username "${{ vars.TEST_DOCKERHUB_USERNAME }}" --password-stdin
 
       # Step 5: Build the Docker image
       - name: Build Docker image
-        run: docker build -t ${{ vars.DOCKERHUB_USERNAME }}/moksha-stats-dashboard:latest .
+        run: docker build -t ${{ vars.TEST_DOCKERHUB_USERNAME }}/moksha-stats-dashboard:latest .
 
       # Step 6: Push the Docker image to DockerHub
       - name: Push Docker image
-        run: docker push ${{ vars.DOCKERHUB_USERNAME }}/moksha-stats-dashboard:latest
+        run: docker push ${{ vars.TEST_DOCKERHUB_USERNAME }}/moksha-stats-dashboard:latest
