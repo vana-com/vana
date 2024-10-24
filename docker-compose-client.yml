@@ -2,6 +2,8 @@ services:
   stats-client:
     container_name: stats-client
     image: thenewautonomy/stats-client:latest
+    build:
+      context: .
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped

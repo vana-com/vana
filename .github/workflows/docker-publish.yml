@@ -33,7 +33,7 @@ jobs:
 
       # Step 5: Build the Docker image using docker-compose
       - name: Build Docker image
-        run: docker-compose -f docker-compose-client.yml build
+        run: docker-compose -f docker-compose-client.yml --verbose build
 
       # Step 6: Push the Docker image to DockerHub using docker-compose
       - name: Push Docker image
