@@ -1,0 +1,18 @@
+services:
+  stats-client:
+    container_name: stats-client
+    image: stats-client:latest
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    environment:
+      - STATS_SERVER_URL=ws://localhost:3000 # Address of the stats server
+      - GETH_URL=ws://geth:8546
+      - INSTANCE_NAME= # Name of your node displayed on the stats dashboard
+      - WS_SECRET=  # Secret defined on the stats server
+      - BEACON_NODE_API=http://beacon:3500/eth/v1/beacon/states/head
+      - PUBLIC_KEY=
+    depends_on:
+      geth:
+        condition: service_started
+    profiles: ["monitoring"]
