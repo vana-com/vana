@@ -29,7 +29,7 @@ jobs:
 
       # Step 4: Log in to DockerHub using the secrets
       - name: Log in to DockerHub
-        run: echo "${{ secrets.TEST_DOCKERHUB_PAT }}" | docker login --username "${{ vars.TEST_DOCKERHUB_USERNAME }}" --password-stdin
+        run: echo "${{ secrets.TEST_PAT }}" | docker login --username "${{ vars.DOCKERHUB_USERNAME }}" --password-stdin
 
       # Step 5: Build the Docker image using docker-compose
       - name: Build Docker image
