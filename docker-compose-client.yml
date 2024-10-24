@@ -6,10 +6,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     environment:
-      - STATS_SERVER_URL=${STATS_SERVER_URL}
+      - STATS_SERVER_URL=${STATS_SERVER_URL:-"http://localhost:3000"}
       - GETH_URL=ws://geth:8546
-      - INSTANCE_NAME=${INSTANCE_NAME}
-      - WS_SECRET=${WS_SECRET}
+      - INSTANCE_NAME=${INSTANCE_NAME:-"default-instance"}
+      - WS_SECRET=${WS_SECRET:-"default-secret"}
       - BEACON_NODE_API=http://beacon:3500/eth/v1/beacon/states/head
-      - PUBLIC_KEY=${PUBLIC_KEY}
+      - PUBLIC_KEY=${PUBLIC_KEY:-"default-public-key"}
     profiles: ["monitoring"]
