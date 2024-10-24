@@ -15,4 +15,3 @@ services:
       - WS_SECRET=${WS_SECRET:-"default-secret"}
       - BEACON_NODE_API=http://beacon:3500/eth/v1/beacon/states/head
       - PUBLIC_KEY=${PUBLIC_KEY:-"default-public-key"}
-    profiles: ["monitoring"]
