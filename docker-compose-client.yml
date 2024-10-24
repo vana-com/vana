@@ -3,7 +3,8 @@ services:
     container_name: stats-client
     image: thenewautonomy/stats-client:latest
     build:
-      context: .
+      context: ./stats-client
+      dockerfile: Dockerfile
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
