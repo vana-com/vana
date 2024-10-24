@@ -12,7 +12,4 @@ services:
       - WS_SECRET=  # Secret defined on the stats server
       - BEACON_NODE_API=http://beacon:3500/eth/v1/beacon/states/head
       - PUBLIC_KEY=
-    depends_on:
-      geth:
-        condition: service_started
     profiles: ["monitoring"]
