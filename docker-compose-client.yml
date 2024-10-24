@@ -1,7 +1,7 @@
 services:
   stats-client:
     container_name: stats-client
-    image: thenewautonomy/stats-client:latest
+    image: vanaorg/stats-client:latest
     build:
       context: ./stats-client
       dockerfile: Dockerfile
