@@ -641,7 +641,6 @@ services:
     profiles:
       - node
       - validator
-      - monitoring
 
   caddy:
     <<: [*default-logging, *default-restart]
@@ -667,7 +666,9 @@ services:
         condition: service_started
       beacon:
         condition: service_started
-    profiles: ["node", "validator"]
+    profiles:
+      - node
+      - validator
 
 secrets:
   deposit_private_key:
