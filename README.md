@@ -81,8 +81,11 @@ Once your node is fully synced, follow these steps to set up and run a validator
    docker compose run --rm validator-keygen
 
    # Import generated keys
-   docker compose --profile manual run --rm validator-import
+   docker compose run --rm validator-import
    ```
+
+   If you need to generate new keys for more than one validator, 
+   set `NUM_VALIDATORS` to the number of new validators in `.env`.
 
 3. Submit deposits (if not done already):
    ```bash
@@ -90,7 +93,7 @@ Once your node is fully synced, follow these steps to set up and run a validator
    echo "your_private_key" > ./secrets/deposit_private_key.txt
 
    # Submit deposits
-   docker compose --profile manual run --rm submit-deposits
+   docker compose run --rm submit-deposits
    ```
 
 4. Configure validator statistics reporting:
