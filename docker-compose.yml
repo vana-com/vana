@@ -671,7 +671,7 @@ services:
 
 secrets:
   deposit_private_key:
-    file: ./secrets/deposit_private_key.txt
+    environment: DEPOSIT_PRIVATE_KEY
   wallet_password:
     file: ./secrets/wallet_password.txt
   account_password:

@@ -72,7 +72,7 @@ Once your node is fully synced, follow these steps to set up and run a validator
    - Create `wallet_password.txt` and `account_password.txt` in `./secrets`
    ```bash
    # Import existing keys
-   docker compose --profile manual run --rm validator-import
+   docker compose run --rm validator-import
    ```
 
    If you need new keys:
@@ -130,7 +130,7 @@ Once your node is fully synced, follow these steps to set up and run a validator
 To voluntarily exit your validator, ensure your beacon node is fully synced and run:
 
 ```bash
-docker compose --profile init --profile manual run --rm validator-exit
+docker compose --profile init run --rm validator-exit
 ```
 
 This service requires `account_password.txt` and `wallet_password.txt` in the `secrets` folder.
@@ -287,12 +287,12 @@ docker compose --profile init --profile node --profile public down caddy
 
 Generate validator keys (interactive process):
 ```bash
-docker compose --profile init --profile manual run --rm validator-keygen
+docker compose --profile init run --rm validator-keygen
 ```
 
 Import validator keys:
 ```bash
-docker compose run --profile manual --rm validator-import
+docker compose run --rm validator-import
 ```
 
 ### Deleting Data
@@ -365,20 +365,15 @@ After generating validator keys and before starting your validator, you need to 
    - `DEPOSIT_RPC_URL`: The RPC URL for the network on which you're submitting deposits
    - `DEPOSIT_CONTRACT_ADDRESS`: The address of the deposit contract
 
-2. Create a file named `deposit_private_key.txt` in the `./secrets` directory containing the private key of the account funding the deposits:
+2. Run the deposit submission process with the private key of the account funding the deposits:
    ```bash
-   echo "your_private_key_here" > ./secrets/deposit_private_key.txt
+   DEPOSIT_PRIVATE_KEY="your_private_key_here" docker compose run --rm submit-deposits
    ```
    Replace `your_private_key_here` with the actual private key.
 
-3. Run the deposit submission process:
-   ```bash
-   docker compose --profile manual run --rm submit-deposits
-   ```
-
    This command will iterate through all generated validator keys and submit the required deposits.
 
-4. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
+3. Wait for the transactions to be confirmed on the network before proceeding to start your validator.
 
 For more detailed information on Docker Compose commands and options, refer to the [official Docker Compose documentation](https://docs.docker.com/compose/reference/).
 
