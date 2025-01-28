@@ -401,34 +401,13 @@ services:
     image: ghcr.io/foundry-rs/foundry:latest
     container_name: submit-deposits
     volumes:
+      - .:/vana:ro
       - ./secrets:/validator_keys:ro
     environment:
       - DEPOSIT_RPC_URL
       - DEPOSIT_CONTRACT_ADDRESS
     entrypoint: ["sh", "-c"]
-    command:
-      - |
-        apk add --no-cache --quiet jq
-        for file in /validator_keys/deposit_data-*.json; do
-          PUBKEY=$(jq -r '.[0].pubkey' "$$file")
-          WITHDRAWAL_CREDENTIALS=$(jq -r '.[0].withdrawal_credentials' "$$file")
-          SIGNATURE=$(jq -r '.[0].signature' "$$file")
-          DEPOSIT_DATA_ROOT=$(jq -r '.[0].deposit_data_root' "$$file")
-          cast send $$DEPOSIT_CONTRACT_ADDRESS \
-            "deposit(bytes,bytes,bytes,bytes32)" \
-            "0x$$PUBKEY" \
-            "0x$$WITHDRAWAL_CREDENTIALS" \
-            "0x$$SIGNATURE" \
-            "0x$$DEPOSIT_DATA_ROOT" \
-            --value 35000ether \
-            --private-key $$(cat /run/secrets/deposit_private_key) \
-            --rpc-url $$DEPOSIT_RPC_URL
-        done
-    depends_on:
-      check-config-validator:
-        condition: service_completed_successfully
-      validator-import:
-        condition: service_completed_successfully
+    command: /vana/container-scripts/submit-deposits.sh
     profiles: ["manual"]
     secrets:
       - deposit_private_key
