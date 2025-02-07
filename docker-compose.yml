@@ -646,6 +646,11 @@ services:
       - VALIDATOR_PUBLIC_KEYS=${VALIDATOR_PUBLIC_KEYS}
       - API_KEY=${STATS_API_KEY}
       - LOG_LEVEL=${STATS_LOG_LEVEL:-"info"}
+    depends_on:
+      geth:
+        condition: service_started
+      beacon:
+        condition: service_started
     profiles:
       - node
       - validator
