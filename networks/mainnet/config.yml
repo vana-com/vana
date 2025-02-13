@@ -81,12 +81,15 @@ ETH1_FOLLOW_DISTANCE: 32
 
 # Execution
 # ---------------------------------------------------------------
-# MAX_WITHDRAWALS_PER_PAYLOAD: 17  # temporarily disabled
+# Maximum number of withdrawals included in a block
+# Use the default value of 2**4 (= 16)
+MAX_WITHDRAWALS_PER_PAYLOAD: 16
 
 # Withdrawals
 # ---------------------------------------------------------------
-# 2**5 (= 32) validators
-# MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 32  # temporarily disabled
+# Maximum number of validators a node will search through to find sufficient withdrawals to include
+# 2**10 (= 1024) validators
+MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 1024
 
 # Validator cycle
 # ---------------------------------------------------------------
