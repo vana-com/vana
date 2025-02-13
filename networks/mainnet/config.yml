@@ -38,11 +38,11 @@ BELLATRIX_FORK_VERSION: 0x20000091
 # Capella
 # Transition: 60 minutes * 60 seconds / 6 seconds per slot / 8 slots per epoch (=75 epochs)
 # Transition + (28 minutes * 60 seconds / 6 seconds per slot / 8 slots per epoch (= 35 epochs))
-CAPELLA_FORK_EPOCH: 18446744073709551615
+CAPELLA_FORK_EPOCH: 503609
 CAPELLA_FORK_VERSION: 0x20000092
 
 # # Deneb
-DENEB_FORK_EPOCH: 18446744073709551615
+DENEB_FORK_EPOCH: 503609
 DENEB_FORK_VERSION: 0x20000093
 
 # Future forks
@@ -107,8 +107,9 @@ DEPOSIT_CONTRACT_ADDRESS: 0x17BbE91c315Bf14f38F6D35052a827cadfFe184e
 # 1000 * 10**9 (= 1,000,000,000,000) Gwei
 MIN_DEPOSIT_AMOUNT: 1000000000000
 # 35000 * 10**9 (= 35,000,000,000,000) Gwei
-# Relevant after Electra fork
-# MIN_ACTIVATION_BALANCE: 35000000000000
+# Mainly for Electra, but since Deneb, Prysm uses MIN_ACTIVATION_BALANCE 
+# to determine if a validator is active
+MIN_ACTIVATION_BALANCE: 35000000000000
 # 35000 * 10**9 (= 35,000,000,000,000) Gwei
 MAX_EFFECTIVE_BALANCE: 35000000000000
 # 1000 * 10**9 (= 1,000,000,000,000) Gwei
