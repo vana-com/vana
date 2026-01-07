@@ -464,29 +464,25 @@ The setup includes services for backing up and restoring your node data. You can
 
 To quickly sync your node using provided snapshots:
 
-1. Download and verify snapshots:
+1. Download and verify snapshots (`curl` or `wget` can be used but `aria2c` is highly recommended):
    ```bash
-   # Download snapshot files (replace DATE with actual date, e.g., 20241104)
-   wget https://storage.googleapis.com/vana-snapshots/DATE/geth-chaindata-DATE.tar.zst{,.md5}
-   wget https://storage.googleapis.com/vana-snapshots/DATE/beacon-chaindata-DATE.tar.zst{,.md5}
+   # Download snapshot files (replace DATE with actual date in the format YYYYMMDD, e.g., 20250528)
+   aria2c -c -s 16 -x 16 https://storage.googleapis.com/vana-snapshots/DATE/beacon-chaindata-DATE.tar{,.md5}
+   aria2c -c -s 16 -x 16 https://storage.googleapis.com/vana-snapshots/DATE/geth-chaindata-DATE.tar{,.md5}
 
    # Verify checksums
    md5sum -c *.md5
    ```
 
-2. Extract snapshots to the backups directory:
+2. Extract snapshots to the data directory:
    ```bash
-   zstd -d geth-chaindata-DATE.tar.zst -o "backups/geth_backup_DATE.dat"
-   zstd -d beacon-chaindata-DATE.tar.zst -o "backups/beaconchain_DATE.db"
+   tar -xvf geth-chaindata-DATE.tar
+   tar -xvf beacon-chaindata-DATE.tar
    ```
 
-3. Restore the snapshots:
+3. Start your node:
    ```bash
-   # For Geth (requires interactive terminal)
-   docker compose run -it --rm geth-restore
-
-   # For Beacon chain (requires interactive terminal)
-   docker compose run -it --rm beacon-restore
+   docker compose --profile init --profile node up -d
    ```
 
 > **Note**: make sure you trust the snapshot provider and verify the checksums before restoring!
