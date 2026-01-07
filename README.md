@@ -476,8 +476,8 @@ To quickly sync your node using provided snapshots:
 
 2. Extract snapshots to the data directory:
    ```bash
-   tar -xf geth-chaindata-DATE.tar
-   tar -xf beacon-chaindata-DATE.tar
+   tar -xvf geth-chaindata-DATE.tar
+   tar -xvf beacon-chaindata-DATE.tar
    ```
 
 3. Start your node:
