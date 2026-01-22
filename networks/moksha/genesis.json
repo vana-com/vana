@@ -14,6 +14,9 @@
         "mergeNetsplitBlock": 0,
         "shanghaiTime": 1726429726,
         "cancunTime": 1726429726,
+        "blobSchedule": {
+            "cancun": { "target": 3, "max": 6, "baseFeeUpdateFraction": 3338477 }
+        },
         "terminalTotalDifficulty": 0,
         "terminalTotalDifficultyPassed": true
     },
