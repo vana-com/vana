@@ -638,7 +638,12 @@ services:
     container_name: stats
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      # Chain data filesystem, read-only. Without this the stats client can
+      # only see the container overlay and reports the boot disk, so free
+      # space looks healthy while the data disk fills up.
+      - ${DISK_CHECK_HOST_PATH:-/}:/hostdisk:ro
     environment:
+      - DISK_CHECK_PATH=/hostdisk
       - NODE_NAME=${NODE_NAME}
       - SERVICE_URL=${STATS_SERVICE_URL}
       - BEACON_ENDPOINT=http://beacon:${GRPC_GATEWAY_PORT:-3500}
