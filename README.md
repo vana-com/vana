@@ -610,3 +610,9 @@ The default ports for geth, beacon, and validator services have been updated
 to avoid conflicts with common system services.
 
 BREAKING CHANGE: Users must update their firewall rules and client configurations
+
+## Optional local EVM key scan
+
+Run `.github/scripts/install-evm-key-scan-hook.sh` once to install the local
+pre-push scan. It leaves global Git configuration unchanged; CI remains the
+enforcement layer.
