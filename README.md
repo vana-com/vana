@@ -21,7 +21,12 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
    cd vana
    ```
 
-2. Configure your environment:
+2. Prepare the developer tools and local pre-push scan:
+   ```bash
+   .github/scripts/setup-developer.sh
+   ```
+
+3. Configure your environment:
    ```bash
    # For Moksha testnet
    cp .env.moksha.example .env
@@ -31,12 +36,12 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
    # Edit .env with your preferred text editor
    ```
 
-3. Start your node:
+4. Start your node:
    ```bash
    docker compose --profile init --profile node up -d
    ```
 
-4. Verify your node is running:
+5. Verify your node is running:
    ```bash
    # View logs for key services
    docker compose logs -f geth    # Execution client
@@ -610,15 +615,3 @@ The default ports for geth, beacon, and validator services have been updated
 to avoid conflicts with common system services.
 
 BREAKING CHANGE: Users must update their firewall rules and client configurations
-
-## Developer setup
-
-Run this once before working with validator configuration:
-
-```bash
-.github/scripts/setup-developer.sh
-```
-
-It verifies the documented Docker and OpenSSL prerequisites and installs the
-optional local pre-push scan. It does not start services or write configuration;
-CI remains the enforcement layer.
