@@ -611,8 +611,14 @@ to avoid conflicts with common system services.
 
 BREAKING CHANGE: Users must update their firewall rules and client configurations
 
-## Optional local EVM key scan
+## Developer setup
 
-Run `.github/scripts/install-evm-key-scan-hook.sh` once to install the local
-pre-push scan. It leaves global Git configuration unchanged; CI remains the
-enforcement layer.
+Run this once before working with validator configuration:
+
+```bash
+.github/scripts/setup-developer.sh
+```
+
+It verifies the documented Docker and OpenSSL prerequisites and installs the
+optional local pre-push scan. It does not start services or write configuration;
+CI remains the enforcement layer.
