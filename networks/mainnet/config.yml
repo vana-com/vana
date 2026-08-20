@@ -55,6 +55,33 @@ ELECTRA_FORK_EPOCH: 18446744073709551615
 # # 2 * 35000 * 10**9 (= 70,000,000,000,000)
 # MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT: 70000000000000
 
+# Fulu (EIP-7594 / PeerDAS) and Gloas (EIP-7732 / ePBS).
+# Required from Prysm v7 onward. This file sets PRESET_BASE: mainnet, so any key it
+# does not define is inherited from Ethereum mainnet -- and the inherited versions
+# (0x06000000 / 0x07000000) collide with Ethereum's own registered config, so the
+# node refuses to start:
+#   version 0x06000000 for fork fulu in config vana conflicts with existing
+#   config named=mainnet
+# Both are disabled with a far-future epoch, so the versions are never used as
+# signing domains and neither fork enters the fork schedule. Verified on a live
+# mainnet node: genesis_validators_root and the Deneb fork digest are unchanged.
+# These supersede the commented-out EIP7594_/EIP7732_ stubs below.
+FULU_FORK_VERSION: 0x20000095
+FULU_FORK_EPOCH: 18446744073709551615
+GLOAS_FORK_VERSION: 0x20000096
+GLOAS_FORK_EPOCH: 18446744073709551615
+
+# Blob-parameter-only (BPO) fork schedule, deliberately empty.
+# An absent key inherits Ethereum mainnet's BPO forks at epochs 412672 and 419072.
+# A BPO entry only gets a distinct fork digest when its epoch is at or after
+# FULU_FORK_EPOCH; Fulu is disabled here, so those entries instead reuse the
+# preceding fork's digest. Prysm's allTopics() walks the fork schedule and stops at
+# the first repeated digest, so the gossip allowlist never reaches Capella/Deneb and
+# the node then refuses every gossip topic ("topic is not allowed by the
+# subscription filter"). It still starts and follows the chain by range sync, so the
+# failure is quiet: no gossip participation and a drifting sync distance.
+BLOB_SCHEDULE: []
+
 # # EIP7594 - Peerdas
 # EIP7594_FORK_VERSION: 0x60000039
 # EIP7594_FORK_EPOCH: 18446744073709551615
@@ -75,6 +102,11 @@ MAX_VALIDATORS_PER_COMMITTEE: 20
 # Time parameters
 # ---------------------------------------------------------------
 SECONDS_PER_SLOT: 6
+# Prysm v7+ reads SLOT_DURATION_MS in preference to SECONDS_PER_SLOT for all slot
+# timing. Left unset it inherits Ethereum mainnet's 12000, so the node does 12s/slot
+# arithmetic on a 6s chain and dies with "invalid payload timestamp" -- while
+# /eth/v1/config/spec still reports SECONDS_PER_SLOT: 6, which makes it look correct.
+SLOT_DURATION_MS: 6000
 SLOTS_PER_EPOCH: 8
 EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
 ETH1_FOLLOW_DISTANCE: 32
