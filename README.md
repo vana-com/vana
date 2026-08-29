@@ -400,6 +400,7 @@ The API gateway implements the following access controls:
 - Public endpoints:
   - Execution layer: All JSON-RPC endpoints (POST /)
   - Consensus layer: Limited set of beacon endpoints including genesis, headers, validator info, and node status
+  - [OpenChainBench](https://openchainbench.com/benchmarks/vana-rpc) — live p50/p90/p99 latency leaderboard for free Vana RPC endpoints, updated every 60 s
 - Private endpoints (localhost and trusted IPs only):
   - All other consensus layer endpoints under /eth/*
   - Configure trusted IPs via RPC_TRUSTED_IP_RANGES in .env
