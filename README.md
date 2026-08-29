@@ -59,7 +59,7 @@ This guide will help you set up a validator node for the Vana Proof-of-Stake (Po
 
 Once your node is fully synced, follow these steps to set up and run a validator.
 
-> **⚠️ IMPORTANT**: Running a validator on the Vana network requires whitelisting. Please join our [Discord](https://discord.com/app/invite-with-guild-onboarding/withvana) to request validator permissions before proceeding with setup.
+> **⚠️ IMPORTANT**: Running a validator on the Vana network requires whitelisting. Please join our [Discord](https://discord.gg/vanaofficial) to request validator permissions before proceeding with setup.
 
 1. Configure validator settings in `.env`:
    ```bash
@@ -146,7 +146,7 @@ This service requires `account_password.txt` and `wallet_password.txt` in the `s
 
 Before proceeding with setup, you must get your validator whitelisted:
 
-1. Join the [Vana Discord](https://discord.com/app/invite-with-guild-onboarding/withvana) and request validator permissions
+1. Join the [Vana Discord](https://discord.gg/vanaofficial) and request validator permissions
 
 2. Generate your validator keys following the [Validator Setup](#optional-validator-setup) section
 
