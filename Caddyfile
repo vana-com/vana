@@ -31,6 +31,17 @@
         remote_ip {$RPC_TRUSTED_IP_RANGES}
     }
 
+    # WebSocket upgrade detection
+    @websocket {
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+
+    # All consensus layer paths (used by the trusted handler below)
+    @eth_all {
+        path /eth/*
+    }
+
     # Execution layer public endpoints
     @public_el {
         method GET POST  # GET is required for WebSocket connections
@@ -39,23 +50,60 @@
         path /
     }
 
-    # Consensus layer public endpoints
+    # The beacon validator namespace is UNAUTHENTICATED in Prysm and must never
+    # be reachable from the public internet (VANA-BC-001). An unauthenticated
+    # POST to /eth/v1/validator/prepare_beacon_proposer overwrites a proposer's
+    # execution-layer fee recipient, and /eth/v{2,3}/validator/blocks plus
+    # /eth/v1/validator/duties/proposer widen the surface. These are meant to be
+    # called only by the validator client over the internal network, never here.
+    @validator_private {
+        path /eth/v1/validator /eth/v1/validator/*
+        path /eth/v2/validator /eth/v2/validator/*
+        path /eth/v3/validator /eth/v3/validator/*
+    }
+
+    # Consensus layer public endpoints.
+    # NOTE: this still forwards the read namespace broadly. The intended
+    # hardening is to narrow this to an explicit read-only allowlist, e.g.:
+    #   path /eth/v1/beacon/genesis*
+    #   path /eth/v1/beacon/headers*
+    #   path /eth/v1/beacon/states/*/validators
+    #   path /eth/v1/beacon/states/*/finality_checkpoints
+    #   path /eth/v1/node/health
+    #   path /eth/v1/node/syncing
+    #   path /eth/v1/node/identity
+    #   path /eth/v1/config/*
+    # Kept broad here so this security fix does not break existing public reads;
+    # the validator namespace is denied above regardless.
     @public_cl {
-        # path /eth/v1/beacon/genesis*
-        # path /eth/v1/beacon/headers*
-        # path /eth/v1/beacon/states/*/validators
-        # path /eth/v1/beacon/states/*/finality_checkpoints
-        # path /eth/v1/node/health
-        # path /eth/v1/node/syncing
-        # path /eth/v1/node/identity
-        # Forward all CL requests until we have a final list of public endpoints
         path /eth/*
     }
 
-    # WebSocket upgrade detection
-    @websocket {
-        header Connection *Upgrade*
-        header Upgrade websocket
+    # Trusted IP access. Must be evaluated BEFORE the public handlers, otherwise
+    # @public_el / @public_cl match first and this block is dead code (which also
+    # means RPC_TRUSTED_IP_RANGES currently has no effect). Trusted ranges keep
+    # full access to the execution and consensus layers, including the validator
+    # namespace the validator client needs.
+    handle @trusted {
+        handle @websocket {
+            reverse_proxy geth:{$GETH_WS_PORT:8546}
+        }
+
+        handle / {
+            reverse_proxy geth:{$HTTP_PORT:8545}
+        }
+
+        handle @eth_all {
+            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
+        }
+
+        # Trusted but unhandled path
+        respond 404
+    }
+
+    # Deny the validator namespace for everyone who is not a trusted IP.
+    handle @validator_private {
+        respond 403
     }
 
     # Public execution layer endpoints
@@ -72,23 +120,6 @@
     # Public consensus layer endpoints
     handle @public_cl {
         reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
-    }
-
-    # Trusted IP access
-    handle @trusted {
-        handle / {
-            # Handle WebSocket connections for trusted IPs
-            handle @websocket {
-                reverse_proxy geth:{$GETH_WS_PORT:8546}
-            }
-
-            # Handle regular HTTP connections for trusted IPs
-            reverse_proxy geth:{$HTTP_PORT:8545}
-        }
-
-        handle /eth* {
-            reverse_proxy beacon:{$GRPC_GATEWAY_PORT:3500}
-        }
     }
 
     # Default: block unhandled requests
