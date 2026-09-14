@@ -22,13 +22,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
-      # Pinned together. conventional-changelog-conventionalcommits 10.4.0 requires
-      # conventional-changelog-writer 9, but @semantic-release/release-notes-generator
-      # (14.1.1, the latest) still depends on writer ^8, so an unpinned install fails
-      # at generateNotes with "Missing helper". Bump both once the notes generator
-      # ships writer 9.
+      # Pinned together. @semantic-release/release-notes-generator (14.1.1, the latest)
+      # depends on conventional-changelog-writer ^8. Preset v10 targets writer 9:
+      # 10.4.0 fails generateNotes with "Missing helper", 10.0-10.3 render an empty
+      # changelog. Stay on preset 9.x until the notes generator ships writer 9.
       - name: Install conventional commits preset
-        run: npm install --no-save conventional-changelog-conventionalcommits@10.3.0
+        run: npm install --no-save conventional-changelog-conventionalcommits@9.3.1
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
