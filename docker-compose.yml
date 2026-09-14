@@ -407,7 +407,15 @@ services:
       - --accept-terms-of-use
       - --verbosity=info
       - --beacon-rpc-provider=beacon:${RPC_PORT:-4000}
-      - --beacon-rest-api-provider=${EXTERNAL_IP}:${RPC_PORT:-4000}
+      # The REST endpoint is a URL and needs a scheme; the gRPC one above is a dial target and
+      # must not have one. It also belongs on the HTTP port, not the gRPC port. From Prysm v7
+      # setting this flag implicitly enables the REST API, so a value that only looked right
+      # under v5 -- where the flag was inert -- now decides how the validator reaches the beacon:
+      # "0.0.0.0:4000" parsed as a URL fails with "first path segment in URL cannot contain
+      # colon", every beacon node reads as unresponsive, and the validator performs no duties.
+      # The validator reaches the beacon directly over the compose network, never through the
+      # public proxy, so this is unaffected by what that proxy chooses to expose.
+      - --beacon-rest-api-provider=http://beacon:${GRPC_GATEWAY_PORT:-3500}
       - --datadir=/vana/validator
       - --wallet-dir=/vana/wallet
       - --wallet-password-file=/run/secrets/wallet_password
