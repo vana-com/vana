@@ -152,7 +152,7 @@ services:
 
   # Main node services
   geth:
-    <<: *default-logging
+    <<: [*default-logging, *default-restart]
     image: ethereum/client-go:${GETH_VERSION:-latest}
     container_name: geth
     volumes:
@@ -220,7 +220,7 @@ services:
     profiles: ["node", "validator"]
 
   beacon:
-    <<: *default-logging
+    <<: [*default-logging, *default-restart]
     # Vana's build of Prysm, not upstream. networks/mainnet/config.yml declares
     # RETIRED_DEPOSIT_CONTRACT_ADDRESS and DEPOSIT_CONTRACT_SWITCH_BLOCK, which only this build
     # understands; on an upstream image the node refuses to start once the configured deposit
@@ -392,7 +392,7 @@ services:
     profiles: ["manual", "validator"]
 
   validator:
-    <<: *default-logging
+    <<: [*default-logging, *default-restart]
     image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
     container_name: validator
     volumes:
@@ -423,8 +423,6 @@ services:
       - --suggested-fee-recipient=${FEE_RECIPIENT_ADDRESS}
       - --monitoring-host=0.0.0.0
       - --monitoring-port=8081
-      - --enable-db-backup-webhook=${BACKUP_VALIDATOR_DB:-false}
-      - --db-backup-output-dir=/backups
     depends_on:
       beacon:
         condition: service_started
@@ -601,18 +599,29 @@ services:
         condition: service_completed_successfully
     profiles: ["backup"]
 
+  # Exports slashing protection history in the standard EIP-3076 format, which any
+  # client can import. This replaces a POST to the validator's /db/backup webhook:
+  # --enable-db-backup-webhook is deprecated and does nothing from Prysm v7, so that
+  # call returned success while backing up nothing.
+  #
+  # STOP THE VALIDATOR FIRST. validator.db is a bolt database and allows a single
+  # writer, so this cannot read it while the validator holds the lock:
+  #   docker compose stop validator
+  #   docker compose --profile backup run --rm validator-backup
+  #   docker compose --profile node --profile validator --profile init up -d validator
   validator-backup:
     <<: *default-logging
     container_name: validator-backup
-    image: alpine:latest
+    image: gcr.io/prysmaticlabs/prysm/validator:${PRYSM_VERSION:-latest}
     volumes:
+      - ./data/validator:/vana/validator
       - ./backups:/backups
-    entrypoint: ["/bin/sh", "-c"]
     command:
-      - |
-        apk add --no-cache curl
-        curl -X POST http://validator:8081/db/backup
-        echo "Validator backup completed"
+      - slashing-protection-history
+      - export
+      - --accept-terms-of-use
+      - --datadir=/vana/validator
+      - --slashing-protection-export-dir=/backups
     profiles: ["backup"]
 
   beacon-restore:
