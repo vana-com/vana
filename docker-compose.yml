@@ -423,6 +423,21 @@ services:
       - --suggested-fee-recipient=${FEE_RECIPIENT_ADDRESS}
       - --monitoring-host=0.0.0.0
       - --monitoring-port=8081
+      # Doppelganger protection. The client listens for ~2 epochs before signing
+      # anything, and exits instead of signing if it sees these keys already attesting
+      # somewhere on the network. It is the control that covers a key existing in more
+      # than one place -- a copy kept by a previous operator, a half-migrated node, a
+      # restored backup someone forgot was running.
+      #
+      # It is not free and it is not foolproof. It costs ~2 epochs of missed
+      # attestations on every start (~96s at Vana's 8-slot, 6s epochs), and Prysm's own
+      # flag text notes it cannot catch every unsafe configuration. It can also stop a
+      # validator that is in fact fine, since the check errs toward halting.
+      #
+      # On by default: missed attestations are recoverable, a slashing is not. Set
+      # VALIDATOR_DOPPELGANGER=false to turn it off, which is reasonable only if you
+      # are certain these keys run nowhere else.
+      - --enable-doppelganger=${VALIDATOR_DOPPELGANGER:-true}
     depends_on:
       beacon:
         condition: service_started

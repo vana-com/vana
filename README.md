@@ -196,6 +196,7 @@ Edit the `.env` file to configure your node. Key variables include:
 - `CHAIN_ID`: Network chain ID
 - `EXTERNAL_IP`: Your node's external IP address
 - `BEACON_IMAGE`: The beacon node image — Vana's build of Prysm (see below)
+- `VALIDATOR_DOPPELGANGER`: Doppelganger protection for the validator (default `true`)
 - Various port configurations for different services
 
 Ensure all required variables are set correctly before proceeding.
@@ -258,6 +259,32 @@ Deposit log scan crossing the deposit contract switch block
 Deposits submitted after the switch go to the current contract, so `DEPOSIT_CONTRACT_ADDRESS` in
 `.env` must be `0xB98aafa6684aef18AEf518772F01F5aE0DA5eA4C`. The retired contract no longer accepts
 deposits.
+
+### Doppelganger protection
+
+The validator runs with `--enable-doppelganger` by default. On every start it listens for
+roughly two epochs before signing anything, and **exits instead of signing** if it sees its
+keys already attesting on the network.
+
+That is the control that covers a key existing in more than one place — a copy kept by a
+previous operator, a half-migrated node, a restored backup someone forgot was running.
+
+It has a cost and a limit, both worth knowing:
+
+- **~96 seconds of missed attestations on every start** (two epochs at 8 slots of 6 seconds).
+- **It is not foolproof.** Prysm's own flag text says it cannot catch every unsafe
+  configuration, and the check errs toward halting — it can stop a validator that is
+  actually fine.
+
+It is on by default because missed attestations are recoverable and a slashing is not. To
+turn it off, which is reasonable only if you are certain these keys run nowhere else:
+
+```bash
+VALIDATOR_DOPPELGANGER=false
+```
+
+If the validator exits at startup reporting a doppelganger detection, **do not simply
+restart it with the check disabled.** Find the other instance first.
 
 ## Verifying Your Setup
 
