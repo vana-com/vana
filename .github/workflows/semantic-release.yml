@@ -21,10 +21,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
-      - name: Install conventional commits preset
-        run: npm install --no-save conventional-changelog-conventionalcommits
+          node-version: "24"
+      # The whole toolchain is locked in .github/release/package-lock.json. Unpinned,
+      # it broke: @semantic-release/release-notes-generator 14.1.1 depends on
+      # conventional-changelog-writer ^8, and preset v10 targets writer 9 (10.4.0
+      # fails generateNotes with "Missing helper", 10.0-10.3 render an empty
+      # changelog). Stay on preset 9.x until the notes generator ships writer 9.
+      - name: Install release tooling
+        run: npm ci --ignore-scripts --prefix .github/release
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
+        run: .github/release/node_modules/.bin/semantic-release
