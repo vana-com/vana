@@ -186,9 +186,10 @@ services:
       - --http.vhosts=${GETH_HTTP_VHOSTS:-*}
       - --http.addr=0.0.0.0
       - --http.port=${HTTP_PORT:-8545}
-      - --http.api=eth,net,web3
-      # Only enable personal and admin APIs if you know what you're doing. It's not possible to limit access to just some of them via Caddy.
-      #- --http.api=eth,net,web3,txpool,personal,admin
+      # Namespaces served over HTTP. Add txpool, debug, admin or personal only
+      # if you know what you're doing: Caddy cannot filter by namespace, so
+      # whatever is listed here is reachable by anyone who can reach the port.
+      - --http.api=${GETH_HTTP_API:-eth,net,web3}
       # 5x the default
       - --rpc.batch-request-limit=${GETH_RPC_BATCH_REQUEST_LIMIT:-5000}
       # 5x the default
@@ -205,7 +206,7 @@ services:
       - --ws
       - --ws.addr=0.0.0.0
       - --ws.port=${GETH_WS_PORT:-8546}
-      - --ws.api=eth,net,web3
+      - --ws.api=${GETH_WS_API:-eth,net,web3}
       - --ws.origins=*
       - --nodekey=/root/.ethereum/bootnode.key
     depends_on:
